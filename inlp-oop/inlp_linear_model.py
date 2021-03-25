@@ -7,7 +7,6 @@ from torch.utils.data import Dataset
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
-import siamese_model
 # an abstract class for linear classifiers
 
 class LinearModel(object):
@@ -96,70 +95,3 @@ class Dataset(torch.utils.data.Dataset):
             vec2 = vec2.to(self.device)
 
             return vec1, vec2, torch.tensor(y).float().to(self.device)
-
-
-
-class SiameseLinearClassifier(LinearModel):
-
-    def __init__(self, model_class = siamese_model.Siamese, model_params = {}, concat_weights = True):
-        """
-
-        :param model_class: the class of the siamese model (default - pytorch-lightning implementation)
-        :param model_params: a dict, specifying model_class initialization parameters
-        :param concat_weights: bool. If true, concat the siamese weights; otherwise, average them.
-                NOTE: if False, the nullspace projection matrix is not guaranteed to project to the nullspace of l1, l2
-                NOTE: this distinction is only meaningful when the siamese network uses different weight matrices for the two inputs.
-        """
-        self.model_class = model_class
-        self.model_params = model_params
-        self.concat_weights = concat_weights
-        self.initialize_model()
-
-    def initialize_model(self):
-        """
-        not in use (model initialziation needs a dataset in torch-lightning)
-        :return:
-        """
-        return
-
-        model = self.model_class(**self.model_params)
-        self.model = model
-
-    def train_model(self, dataset_handler: inlp_dataset_handler.ClassificationDatasetHandler) -> float:
-
-        """
-        :param dataset_handler:
-        :return:  accuracy score on the dev set / Person's R in the case of regression
-        """
-
-        X_train, Y_train = dataset_handler.get_current_training_set()
-        X_train1, X_train2 = X_train
-        X_dev, Y_dev = dataset_handler.get_current_dev_set()
-        X_dev1, X_dev2 = X_dev
-
-        device = self.model_params["device"]
-        train_dataset = Dataset(X_train1, X_train2, Y_train, device = device)
-        dev_dataset = Dataset(X_dev1, X_dev2, Y_dev, device = device)
-
-        self.model = self.model_class(train_dataset, dev_dataset, input_dim = self.model_params["input_dim"], hidden_dim = self.model_params["hidden_dim"], batch_size = self.model_params["batch_size"], verbose = self.model_params["verbose"], same_weights = self.model_params["same_weights"], compare_by = self.model_params["compare_by"]).to(device)
-        score = self.model.train_network(self.model_params["num_iter"])
-        return score
-
-    def get_weights(self) -> np.ndarray:
-        """
-        :return: final weights of the model, as np array
-        """
-
-        w1, w2 = self.model.l1.weight.detach().cpu().numpy(), self.model.l2.weight.detach().cpu().numpy()
-
-        if self.concat_weights:
-            w = np.concatenate([w1, w2], axis = 0)
-        else:
-            w = (w1 + w2) / 2
-
-        if len(w.shape) == 1:
-                w = np.expand_dims(w, 0)
-        return w
-
-
-
