@@ -187,8 +187,6 @@ def main():
     print("sent_per_lang", sent_per_lang)
     print("num_classifiers", num_classifiers)
     print("num_to_eval", num_to_eval)
-    print("no_inlp", args.no_inlp)
-    print("use P", args.use_P)
     print(args)
 
     # load mBERT
